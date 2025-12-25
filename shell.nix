@@ -2,8 +2,8 @@
 
 pkgs.mkShell {
   packages = with pkgs; [
-	hydra
 	cewl
+	thc-hydra
   ];
 
   shellHook = ''

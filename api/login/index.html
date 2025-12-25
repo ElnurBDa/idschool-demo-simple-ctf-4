@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>API Login (demo)</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <style>
+    body{font-family:monospace;background:#071018;color:#bfeef8;padding:20px}
+    pre{background:#031018;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.03)}
+    .ok{color:#9ff6a6}
+    .err{color:#ff9fbf}
+  </style>
+</head>
+<body>
+  <h1>API Login (static demo)</h1>
+  <p>This static page implements a browser-side /api/login handler for demo purposes. It reads query parameters <code>username</code> and <code>password</code>, attempts authentication in the browser (using the same obfuscation as the site), and renders a JSON-like response below.</p>
+  <p><strong>Note:</strong> Tools like <code>curl</code> or <code>hydra</code> fetch the raw HTML and do not execute the JavaScript on this page. Those tools will therefore only receive the static HTML response (HTTP 200) and cannot rely on this page to provide different HTTP status codes.</p>
+
+  <div id="out"><pre>Processing...</pre></div>
+
+  <script>
+    (function(){
+      function parseQS(){
+        const params = {}; const q = location.search.replace(/^\?/,'');
+        for(const part of q.split('&')){
+          if(!part) continue; const [k,v]=part.split('='); params[decodeURIComponent(k||'')]=decodeURIComponent(v||'');
+        }
+        return params;
+      }
+
+      function b64ToBytes(b64){ const bin = atob(b64); return new Uint8Array([...bin].map(c=>c.charCodeAt(0))); }
+      function hexToStr(hex){ hex=(hex||'').replace(/[^0-9a-fA-F]/g,''); let out=''; for(let i=0;i<hex.length;i+=2) out+=String.fromCharCode(parseInt(hex.substr(i,2),16)); return out; }
+      function xorDecryptBase64(b64,keyStr){ const data=b64ToBytes(b64); const key=new TextEncoder().encode(keyStr); const out=new Uint8Array(data.length); for(let i=0;i<data.length;i++) out[i]=data[i]^key[i%key.length]; return new TextDecoder().decode(out); }
+
+      // same obf blobs used by the site
+      const obf = { 'chillguy':'HgQcHVoOAAdQVlY=', 'admin':'DQ0GAkEGBxo=' };
+
+      const params = parseQS();
+      const user = params.username || '';
+      const pass = params.password || '';
+
+      const css = getComputedStyle(document.documentElement).getPropertyValue('--secret-hex') || '';
+      const key = hexToStr(css);
+
+      const out = document.getElementById('out');
+  function show(obj, ok){ out.innerHTML = '<pre class="' + (ok ? 'ok' : 'err') + '">' + JSON.stringify(obj,null,2) + '</pre>'; }
+
+      if(!user || !pass){
+        show({ok:false,msg:'missing username or password'}, false);
+        return;
+      }
+
+      const stored = obf[user];
+      if(!stored){ show({ok:false,msg:'unknown user'}, false); return; }
+      try{
+        const real = xorDecryptBase64(stored, key);
+        if(pass === real){
+          show({ok:true,user:user,token:btoa(user+':'+Date.now())}, true);
+        } else {
+          show({ok:false,msg:'invalid credentials'}, false);
+        }
+      }catch(e){ show({ok:false,msg:'error processing request'}, false); }
+
+    })();
+  </script>
+</body>
+</html>
