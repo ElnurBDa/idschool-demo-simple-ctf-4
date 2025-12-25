@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Login Tester</title>
+  <link rel="stylesheet" href="../css/styles.css">
+  <style>body{background:#041017;color:#9fcbdc;font-family:monospace;padding:20px}</style>
+</head>
+<body>
+  <h1>Admin Login Tester</h1>
+  <p>This page will attempt to decrypt the admin blob using the CSS secret and show the result below.</p>
+  <pre id="out">Running...</pre>
+  <script>
+    (function(){
+      function hexToStr(h){ return (h||'').replace(/[^0-9a-fA-F]/g,'').match(/.{1,2}/g||[]).map(x=>String.fromCharCode(parseInt(x,16))).join(''); }
+      function b64ToBytes(b64){ const bin=atob(b64); return new Uint8Array([...bin].map(c=>c.charCodeAt(0))); }
+      const css = getComputedStyle(document.documentElement).getPropertyValue('--secret-hex')||'';
+      const key = hexToStr(css);
+      const obf = 'DQ0GAkEGBw0='; // admin blob from js/app.js
+      const data = b64ToBytes(obf);
+      const keyBytes = new TextEncoder().encode(key);
+      const out = new Uint8Array(data.length);
+      for(let i=0;i<data.length;i++) out[i]=data[i]^keyBytes[i%keyBytes.length];
+      const pw = new TextDecoder().decode(out);
+      document.getElementById('out').textContent = 'Decrypted admin password: ' + pw + '\n\nUse this to attempt login on the site.';
+    })();
+  </script>
+</body>
+</html>
